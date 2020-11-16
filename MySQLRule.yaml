@@ -1,0 +1,108 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mysql-rules
+  #namespace: monitoring
+  labels:
+    prometheus: k8s
+    role: alert-rules
+spec:
+  groups:
+    - name: mysql.rules
+      rules:
+#       启动时间
+        - expr: mysql_global_status_uptime
+          record: 'mysql:uptime'
+#       每秒查询数
+        - expr: rate(mysql_global_status_questions[5m])
+          record: 'mysql:qps'
+#       事务数
+        - expr: >-
+            rate(mysql_global_status_commands_total{command="commit"}[5m]) +
+            ignoring(command)
+            rate(mysql_global_status_commands_total{command="rollback"}[5m])
+          record: 'mysql:tps'
+#       当前连接数
+        - expr: mysql_global_status_threads_connected
+          record: 'mysql:connections'
+#       上行传输速率 单位Bps
+        - expr: rate(mysql_global_status_bytes_sent[5m])
+          record: 'mysql:sent'
+#       下行传输速率 单位Bps
+        - expr: rate(mysql_global_status_bytes_received[5m])
+          record:  'mysql:received'
+#       innodb buffer pool 读请求数
+        - expr: rate(mysql_global_status_innodb_buffer_pool_read_requests[5m])
+          record: 'mysql:buffer_pool_read_requests'
+#       innodb buffer pool 写请求数
+        - expr: rate(mysql_global_status_innodb_buffer_pool_write_requests[5m])
+          record: 'mysql:buffer_pool_write_requests'
+#       innodb buffer pool 命中率
+        - expr: >-
+            increase(mysql_global_status_innodb_buffer_pool_reads[2m])/
+            increase(mysql_global_status_innodb_buffer_pool_read_requests[2m])
+          record: 'mysql:hit_ratios'
+#       磁盘读写(iops)
+        - expr: >-
+            rate(mysql_global_status_innodb_data_reads[2m])+
+            rate(mysql_global_status_innodb_data_writes[2m])
+          record: "mysql:iops"
+#       临时表数量
+        - expr: mysql_global_status_created_tmp_disk_tables
+          record: "mysql:tmp_disk_tables"
+#       慢查询
+        - expr: rate(mysql_global_status_slow_queries[30m])
+          record: "mysql:slow_queries"
+#       死锁
+        - expr: mysql_global_variables_innodb_print_all_deadlocks
+          record: "mysql:deadlock"
+    - name: mysql
+      rules:
+    #    - alert: MysqlDown
+    #      expr: absent(up{job="mysql"} == 1)
+    #      for: 15m
+    #      labels:
+    #        severity: critical
+    #      annotations:
+    #        message: >-
+    #          mysql未被Prometheus发现
+        - alert: Mysql查询过多
+          expr: rate(mysql_global_status_questions[5m]) > 500
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{$labels.instance}}: Mysql_High_QPS detected"
+            description: "{{$labels.instance}}: Mysql qps 超过500 ,(current value is: {{ $value }})"
+        - alert: Mysql连接过多
+          expr: (mysql_global_status_threads_connected )/(mysql_global_variables_max_connections) > 0.3
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{$labels.instance}}: Mysql Too_Many_Connections detected"
+            description: "{{$labels.instance}}: Mysql连接数超过mysql_global_variables_max_connections的百分之30,(current value is: {{ $value }})"
+        - alert: Mysql慢查询过多
+          expr: rate(mysql_global_status_slow_queries[10m]) > 3
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{$labels.instance}}: Mysql_Too_Many_Slow_Query detected"
+            description: "{{$labels.instance}}: Mysql十分钟内慢查询数超过3,(current value is: {{ $value }})"
+        - alert: MysqlBuffer_Pool命中率不足90%
+          expr: (1-increase(mysql_global_status_innodb_buffer_pool_reads[2m])/increase(mysql_global_status_innodb_buffer_pool_read_requests[2m]))<0.9
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{$labels.instance}}: Mysql_Buffer_Pool_Size is too small"
+            description: "{{$labels.instance}}: Mysql缓存命中率低于90%,(current value is: {{ $value }})"
+        - alert: Mysql死锁
+          expr: mysql_global_status_innodb_deadlocks > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{$labels.instance}}: Mysql_Deadlock detected"
+            description: "{{$labels.instance}}: Mysql发生死锁,(current value is: {{ $value }})"

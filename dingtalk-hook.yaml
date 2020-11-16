@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dingtalk-hook
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: dingtalk-hook
+  template:
+    metadata:
+      labels:
+        app: dingtalk-hook
+    spec:
+      containers:
+      - name: dingtalk-hook
+        image: timonwong/prometheus-webhook-dingtalk
+        imagePullPolicy: IfNotPresent
+        args:
+        #- --ding.profile=webhook1=https://oapi.dingtalk.com/robot/send?access_token=aaff20dda284e1fa509500c910129f36c190c5d83705bf05ab9965cef2f64c6f
+          - '--web.enable-ui'
+          - '--web.enable-lifecycle'
+          - '--config.file=/etc/prometheus-webhook-dingtalk/templates/legacy/config.yml'
+        ports:
+        - containerPort: 8060
+          protocol: TCP
+        volumeMounts:
+        - mountPath: "/etc/prometheus-webhook-dingtalk/templates/legacy"
+          name: dingtalk-volume
+      volumes:
+      - name: dingtalk-volume
+        persistentVolumeClaim:
+          claimName: dingding-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dingtalk-hook
+  namespace: monitoring
+  labels:
+    app: dingtalk-hook
+spec:
+  selector:
+    app: dingtalk-hook
+  ports:
+  - name: hook
+    port: 8060
+    protocol: TCP
+    targetPort: 8060

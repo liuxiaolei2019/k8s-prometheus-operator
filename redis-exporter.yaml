@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        app: redis-exporter
+  template:
+    metadata:
+      labels:
+        app: redis-exporter
+    spec:
+      containers:
+      - name: redis-exporter
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: REDIS_ADDR
+          value: "192.168.1.221:6379"
+        - name: REDIS_PASSWORD
+          value: "thxj@888"
+        - name: REDIS_EXPORTER_DEBUG
+          value: "1"
+        image: oliver006/redis_exporter
+        ports:
+        - containerPort: 9121
+          name: redis-exporter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis-exporter
+  name: redis-exporter
+spec:
+  ports:
+  - name: redis-exporter
+    port: 9121
+    protocol: TCP
+    targetPort: 9121
+  type: NodePort
+  selector:
+    app: redis-exporter
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: redis-exporter
+  name: redis-exporter
+spec:
+  endpoints:
+  - interval: 15s
+    port: redis-exporter
+#    path: /metrics
+  namespaceSelector:
+    matchNames:
+    - default
+  jobLabel: app
+  selector:
+    matchLabels:
+      app: redis-exporter

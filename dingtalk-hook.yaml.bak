@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dingtalk-hook
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: dingtalk-hook
+  template:
+    metadata:
+      labels:
+        app: dingtalk-hook
+    spec:
+      containers:
+      - name: dingtalk-hook
+        image: timonwong/prometheus-webhook-dingtalk
+        #image: yangpeng2468/alertmanager-dingtalk-hook:v1
+        imagePullPolicy: IfNotPresent
+        args:
+        - --ding.profile=webhook1=https://oapi.dingtalk.com/robot/send?access_token=aaff20dda284e1fa509500c910129f36c190c5d83705bf05ab9965cef2f64c6f
+        ports:
+        - containerPort: 8060
+        #- containerPort: 5000
+          protocol: TCP
+        #env:
+        #- name: ROBOT_TOKEN
+        #  valueFrom:
+        #    secretKeyRef:
+        #      name: dingtalk-secret
+        #      key: token
+        resources:
+          requests:
+            cpu: 50m
+            memory: 200Mi
+          limits:
+            cpu: 50m
+            memory: 200Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dingtalk-hook
+  namespace: monitoring
+  labels:
+    app: dingtalk-hook
+spec:
+  selector:
+    app: dingtalk-hook
+  ports:
+  - name: hook
+    port: 8060
+    protocol: TCP
+    targetPort: 8060

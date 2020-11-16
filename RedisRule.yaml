@@ -1,0 +1,108 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: redis-rules
+  namespace: monitoring
+  labels:
+    prometheus: k8s
+    role: alert-rules
+spec:
+  groups:
+    - name: redis
+      rules:
+        - alert: RedisDown
+          expr: absent(up{job=~"redis.*"} == 1)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            message: >-
+              Redis未被Prometheus发现
+        - alert: Redis连接数即将耗尽
+          expr: predict_linear(redis_connected_clients[5m],3600) > redis_config_maxclients
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              根据过去5分钟的表现，{{$labels.service}}实例{{$labels.instance}}的连接数
+              未来一小时将会超过redis_config_maxclients
+        - alert: Redis连接数异常增多
+          expr: >-
+            idelta(redis_connected_clients[2m])/
+            ( redis_connected_clients-idelta(redis_connected_clients[2m]))
+            >0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              过去5分钟{{$labels.service}}实例{{$labels.instance}}的连接数增长了一倍
+        - alert: Redis客户端阻塞
+          expr: redis_blocked_clients > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}客户端阻塞,
+              请检查是否有list阻塞调用,通常包含命令(BRPOP, BLPOP, BRPOPLPUSH)
+        #- alert: Redis内存使用量过高
+        #  expr: redis_memory_used_bytes/redis_config_maxmemory >0.8
+        #  for: 2m
+        #  labels:
+        #    severity: warning
+        #  annotations:
+        #    message: >-
+        #      {{$labels.service}}实例{{$labels.instance}}内存使用量超过80%
+        - alert: Redis单实例总键数超过100万
+          expr: sum(redis_db_keys) without (db) >1000000
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}总键数超过100万,
+              单实例键个数过大,可能导致过期键的回收不及时
+        - alert: Redis单实例每秒命令处理数超过1万
+          expr: rate(redis_commands_processed_total[5m]) > 10000
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}每秒命令处理数超过1万,
+              单实例请求数过多,可能导致请求堆积
+        - alert: Redis最近一次fork阻塞超过500毫秒
+          expr: redis_latest_fork_seconds > 0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}最近一次fork阻塞超过500毫秒
+        - alert: Redis慢查询过多
+          expr: increase(redis_slowlog_length[1m]) > 10
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}一分钟内慢查询超过十个
+        - alert: Redis持久化生成rdb的时间过长
+          expr: rdb_last_bgsave_duration_sec >20
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}持久化生成rdb的时间超过20秒
+        - alert: Redis持久化失效
+          expr: redis_rdb_last_bgsave_status != 1
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            message: >-
+              {{$labels.service}}实例{{$labels.instance}}持久化失效
+
