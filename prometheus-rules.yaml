@@ -1417,19 +1417,19 @@ spec:
         long: 1d
         severity: warning
         short: 2h
-    - alert: KubeAPIErrorBudgetBurn
-      annotations:
-        message: The API server is burning too much error budget
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
-      expr: |
-        sum(apiserver_request:burnrate3d) > (1.00 * 0.01000)
-        and
-        sum(apiserver_request:burnrate6h) > (1.00 * 0.01000)
-      for: 3h
-      labels:
-        long: 3d
-        severity: warning
-        short: 6h
+    #- alert: KubeAPIErrorBudgetBurn
+    #  annotations:
+    #    message: The API server is burning too much error budget
+    #    runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
+    #  expr: |
+    #    sum(apiserver_request:burnrate3d) > (1.00 * 0.01000)
+    #    and
+    #    sum(apiserver_request:burnrate6h) > (1.00 * 0.01000)
+    #  for: 3h
+    #  labels:
+    #    long: 3d
+    #    severity: warning
+    #    short: 6h
   - name: kubernetes-system-apiserver
     rules:
     - alert: KubeClientCertificateExpiration
@@ -1829,6 +1829,7 @@ spec:
           user: prometheus
       - alert: CPU使用率告警
         annotations:
+          value: '{{ $value }}%'
           description: '服务器: CPU使用超过90%！(当前值: {{ $value }}%)'
           summary: '机器 {{ $labels.instance }} CPU使用超过90% '
         expr: >-
@@ -1839,10 +1840,11 @@ spec:
           user: prometheus
       - alert: 内存使用率告警
         annotations:
-          description: '服务器: 内存使用超过70%！(当前值: {{ $value }}%)'
-          summary: '机器 {{ $labels.instance }} 内存使用超过70%'
+          value: '{{ $value }}%' 
+          description: '{{ $labels.instance }} : 内存使用超过80%！(当前值: {{ $value }}%)'
+          summary: '机器 {{ $labels.instance }} 内存使用超过80%'
         expr: >-
-          (node_memory_MemTotal_bytes - (node_memory_MemFree_bytes+node_memory_Buffers_bytes+node_memory_Cached_bytes)) / node_memory_MemTotal_bytes * 100 > 60
+          (node_memory_MemTotal_bytes - (node_memory_MemFree_bytes+node_memory_Buffers_bytes+node_memory_Cached_bytes)) / node_memory_MemTotal_bytes * 100 > 80
         for: 1m
         labels:
           severity: warning
