@@ -1842,7 +1842,7 @@ spec:
           description: '服务器: 内存使用超过70%！(当前值: {{ $value }}%)'
           summary: '机器 {{ $labels.instance }} 内存使用超过70%'
         expr: >-
-          (node_memory_MemTotal_bytes - (node_memory_MemFree_bytes+node_memory_Buffers_bytes+node_memory_Cached_bytes)) / node_memory_MemTotal_bytes * 100 > 80
+          (node_memory_MemTotal_bytes - (node_memory_MemFree_bytes+node_memory_Buffers_bytes+node_memory_Cached_bytes)) / node_memory_MemTotal_bytes * 100 > 60
         for: 1m
         labels:
           severity: warning
