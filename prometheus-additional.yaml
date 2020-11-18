@@ -54,3 +54,18 @@
   - source_labels: [__meta_kubernetes_pod_name]
     action: replace
     target_label: kubernetes_pod_name
+- job_name: 'http_get_all'  # blackbox_export module
+  scrape_interval: 30s
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+  static_configs:
+    - targets:
+      - https://www.baidu.com
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: __param_target
+    - source_labels: [__param_target]
+      target_label: instance
+    - target_label: __address__
+      replacement: prometheus-blackbox-exporter:9115 #blackbox-exporter 所在的机器和端口
