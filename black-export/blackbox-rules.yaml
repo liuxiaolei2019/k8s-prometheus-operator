@@ -11,7 +11,7 @@ spec:
     - name: ssl
       rules:
         - alert: "ssl证书过期警告"
-          expr: (probe_ssl_earliest_cert_expiry - time())/86400 < 30
+          expr: (probe_ssl_earliest_cert_expiry - time())/86400 < 300
           for: 10s
           labels:
             severity: warn
